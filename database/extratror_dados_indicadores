@@ -1,0 +1,78 @@
+import glob
+import os
+import pandas as pd
+import sqlite3
+import re
+from pyxlsb import open_workbook
+
+def import_xlsb_to_sqlite(input_files, output_db, sheet_name='BD_Resultado Lotes', columns=None):
+    # Conectar ao banco de dados SQLite
+    conn = sqlite3.connect(output_db)
+    
+    # Mapeamento para conversão da coluna CLASSIFICAÇÃO
+    class_map = {'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 'F': 0}
+    
+    for file_path in input_files:
+        try:
+            with open_workbook(file_path) as wb:
+                if sheet_name in wb.sheets:
+                    # Ler as colunas desejadas
+                    df = pd.read_excel(file_path, sheet_name=sheet_name, engine='pyxlsb', usecols=columns)
+                    
+                    # Limpar nomes de colunas
+                    df.columns = [col.strip().replace(' ', '_') for col in df.columns]
+                    
+                    # Converter valores da coluna CLASSIFICAÇÃO
+                    if 'CLASSIFICAÇÃO' in df.columns:
+                        df['CLASSIFICAÇÃO'] = df['CLASSIFICAÇÃO'].map(class_map)
+                        # Verificar valores não mapeados
+                        if df['CLASSIFICAÇÃO'].isna().any():
+                            print(f"Aviso: Valores inválidos em CLASSIFICAÇÃO encontrados em {file_path}")
+                    
+                    # Extrair ano do nome do arquivo
+                    file_name = os.path.basename(file_path)
+                    year_match = re.search(r'Indicadores_Fomento_(\d{4})\.xlsb', file_name)
+                    if year_match:
+                        year = int(year_match.group(1))
+                        df['Ano'] = year
+                    else:
+                        print(f"Aviso: Não foi possível extrair o ano do arquivo {file_name}")
+                        df['Ano'] = None
+                    
+                    # Remover linhas que contêm NaN ou null
+                    df = df.dropna()
+
+                    # Salvar na tabela 'resultados'
+                    df.to_sql('resultados', conn, if_exists='append', index=False)
+                    print(f"Dados de {file_name} importados com sucesso para a tabela 'resultados' com ano {year}")
+                else:
+                    print(f"Aba '{sheet_name}' não encontrada em {file_path}")
+        except Exception as e:
+            print(f"Erro ao processar {file_path}: {str(e)}")
+    
+    # Fechar conexão
+    conn.close()
+    print(f"\nBanco de dados salvo em {output_db}")
+
+# Configurações
+folder_path = r'P:\Git\database_zootecnico_depav\database\planilhas'
+input_files = glob.glob(os.path.join(folder_path, 'Indicadores_Fomento_*.xlsb'))
+output_db = os.path.join(folder_path, 'resultado_lotes.db')
+sheet_name = 'BD_Resultado Lotes'
+columns = ['Fazenda', 'Proprietario', 'Conversão Alimentar', 'CLASSIFICAÇÃO']
+
+# Processar e importar dados para a tabela 'nucleos'
+excel_file = pd.ExcelFile(os.path.join(folder_path, "PLANILHA MESTRA.xlsx"))
+df_nucleos = excel_file.parse("DADOS CADASTRAIS", header=0, usecols=['Aviário', 'Número do Núcleo'])
+df_nucleos = df_nucleos.dropna(subset=['Número do Núcleo'])
+df_nucleos['Número do Núcleo'] = df_nucleos['Número do Núcleo'].astype(float).astype(int).astype(str)
+print(df_nucleos.head())
+
+conn = sqlite3.connect(output_db)
+df_nucleos.to_sql('nucleos', conn, if_exists='replace', index=False)
+conn.close()
+print("Tabela 'nucleos' criada e salva com sucesso.")
+
+
+if __name__ == "__main__":
+    import_xlsb_to_sqlite(input_files, output_db, sheet_name, columns)
