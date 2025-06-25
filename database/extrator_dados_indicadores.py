@@ -63,8 +63,8 @@ sheet_name = 'BD_Resultado Lotes'
 columns = ['Fazenda', 'Proprietario', 'Conversão Alimentar', 'CLASSIFICAÇÃO']
 
 # Processar e importar dados para a tabela 'nucleos'
-excel_file = pd.ExcelFile(os.path.join(folder_path, "PLANILHA MESTRA.xlsx"))
-df_nucleos = excel_file.parse("DADOS CADASTRAIS", header=0, usecols=['Aviário', 'Número do Núcleo'])
+excel_file = pd.ExcelFile(os.path.join(folder_path, "PLANILHA_MESTRA.xlsx"))
+df_nucleos = excel_file.parse("DADOS CADASTRAIS", header=0, usecols=['Aviário', 'Número do Núcleo', 'Nome Proprietário'])
 df_nucleos = df_nucleos.dropna(subset=['Número do Núcleo'])
 df_nucleos['Número do Núcleo'] = df_nucleos['Número do Núcleo'].astype(float).astype(int).astype(str)
 print(df_nucleos.head())

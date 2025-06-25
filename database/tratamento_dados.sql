@@ -18,8 +18,9 @@ ALTER TABLE temp_promob RENAME TO promob;
 CREATE VIEW avg_nota_nucleo AS
 SELECT 
     p."Núcleo" AS Granja,
-    p.Ano,
-    AVG(p.Nota) AS Media_Nota
+        n."Nome Proprietário" AS Proprietario,
+        p.Ano,
+        ROUND(AVG(p.Nota), 1) AS Media_Nota
 FROM promob p
 LEFT JOIN nucleos n ON p."Aviário" = n."Aviário"
 WHERE CAST(p."Núcleo" AS TEXT) != '0x2a'
