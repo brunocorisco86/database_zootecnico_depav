@@ -86,6 +86,21 @@ def import_xlsb_to_sqlite(input_files, output_db, sheet_name='BD_Resultado Lotes
                     if 'Idade_Matriz' in df_resultado.columns:
                         df_resultado['Idade_Matriz'] = df_resultado['Idade_Matriz'].apply(lambda x: -(-x // 1) if pd.notna(x) else x)
                     
+                    # Converter a coluna 'Data do Abate' para o formato date, a origem é o Excel e a data é um número inteiro
+                    if 'Data_do_Abate' in df_resultado.columns:
+                        df_resultado['Data_do_Abate'] = pd.to_datetime(df_resultado['Data_do_Abate'], unit='D', origin='1899-12-30', errors='coerce')
+                        # Normalizar para meia-noite (remover a parte do tempo)
+                        df_resultado['Data_do_Abate'] = df_resultado['Data_do_Abate'].dt.normalize()
+                        # Converter para formato de string ISO para armazenamento correto em SQLite
+                        df_resultado['Data_do_Abate'] = df_resultado['Data_do_Abate'].dt.strftime('%Y-%m-%d')
+                    else:
+                        print(f"Aviso: Coluna 'Data do Abate' não encontrada em {file_name}. Data do Abate não será convertida.")
+                        df_resultado['Data_do_Abate'] = None
+                    # Verificar se a coluna 'Data do Abate' foi convertida corretamente
+                    if df_resultado['Data_do_Abate'].isna().any():
+                        print(f"Aviso: Valores inválidos encontrados na coluna 'Data do Abate' em {file_name}. Alguns valores não foram convertidos corretamente.")
+                        
+
                     # Salvar na tabela 'resultados'
                     df_resultado.to_sql('resultados', conn, if_exists='append', index=False)
                     print(f"Dados de {file_name} importados com sucesso para a tabela 'resultados' com ano {year}")
@@ -103,7 +118,7 @@ folder_path = r'P:\Git\database_zootecnico_depav\database\\'
 input_files = glob.glob(os.path.join(folder_path, 'Indicadores_Fomento_*.xlsb'))
 output_db = os.path.join(folder_path, 'resultado_lotes.db')
 sheet_name = 'BD_Resultado Lotes'
-columns = ['Fazenda', 'Número Composto', 'Proprietario', 'Conversão Alimentar', 'CLASSIFICAÇÃO','Nome Linhagem','Fornecedor Pinto','Lista matriz','Idade Matriz','Mortalidade']
+columns = ['Data do Abate', 'Fazenda', 'Número Composto', 'Proprietario', 'Conversão Alimentar', 'CLASSIFICAÇÃO','Nome Linhagem','Fornecedor Pinto','Lista matriz','Idade Matriz','Mortalidade']
 
 # Processar e importar dados para a tabela 'nucleos'
 excel_file = pd.ExcelFile(os.path.join(folder_path, "PLANILHA_MESTRA.xlsx"))
