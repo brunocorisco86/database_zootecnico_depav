@@ -1,36 +1,7 @@
--- Criar uma tabela temporária com valores únicos, mantendo a primeira ocorrência
-CREATE TABLE temp_promob AS
-SELECT *
-FROM promob
-WHERE ROWID IN (
-    SELECT MIN(ROWID)
-    FROM promob
-    GROUP BY "Aviário-Lote"
-);
-
--- Excluir a tabela original
-DROP TABLE promob;
-
--- Renomear a tabela temporária para o nome original
-ALTER TABLE temp_promob RENAME TO promob;
-
--- Criar a view avg_nota_nucleo excluindo Núcleo = '0x2a'
-CREATE VIEW avg_nota_nucleo AS
-SELECT 
-    p."Núcleo" AS Granja,
-        n."Nome Proprietário" AS Proprietario,
-        p.Ano,
-        ROUND(AVG(p.Nota), 1) AS Media_Nota
-FROM promob p
-LEFT JOIN nucleos n ON p."Aviário" = n."Aviário"
-WHERE CAST(p."Núcleo" AS TEXT) != '0x2a'
-GROUP BY p."Núcleo", p.Ano
-ORDER BY p."Núcleo", p.Ano;
-
--- View trazer os dados de condena e resultados
-
+-- Criação da view vw_condena_resultados
 DROP VIEW IF EXISTS vw_condena_resultados;
 
+-- View para trazer os dados de condena e resultados
 CREATE VIEW vw_condena_resultados AS
 SELECT 
     c."Data Produção" AS Data_Abate,
@@ -50,7 +21,6 @@ SELECT
     r."Fornecedor_Pinto" AS Fornecedor_Pintainho,
     r."CLASSIFICAÇÃO" AS Classificacao,
     r."Conversão_Alimentar" AS Conversao,
-    r."Mortalidade" AS Mortalidade,
     r."Ano" AS ANO
 FROM 
     condena c
@@ -58,3 +28,11 @@ JOIN
     resultados r ON c."Aviário-Lote" = r."Número_Composto"
 LEFT JOIN
     nucleos n ON c."Aviário" = n."Aviário";
+    nucleos n ON c."Aviário" = n."Aviário";
+
+-- Exportar os dados da view para CSV
+.headers on
+.mode csv
+.output vw_condena_resultados.csv
+SELECT * FROM vw_condena_resultados;
+.output stdout
